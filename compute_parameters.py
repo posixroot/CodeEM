@@ -6,10 +6,10 @@ import sys
 import os
 import random
 import math
-import numpy
+import numpy as np
 
 
-def em(clusters, training_data):
+def compute_parameters(cluster_names, vector_length, training_data):
   """This function computes the EM algorithm."""
 
   # print "AI HW1\n"
@@ -26,6 +26,33 @@ def em(clusters, training_data):
   # random.seed(clusters*random.random())
 
   # f = open(data, 'r')
+
+  mu = {}
+  variance = {}
+  clusters = len(cluster_names)
+
+  sorted_data = {}
+  for item in training_data:
+    label = item.keys()[0]
+    if sorted_data.has_key(label):
+      sorted_data[label].append(item.get(label))
+    else:
+      sorted_data[label] = []
+      sorted_data[label].append(item.get(label))
+
+  for label in sorted_data.keys():
+    mat2d = np.array(sorted_data[label])
+    mu[label] = list(np.mean(mat2d, axis=0))
+    variance[label] = list(np.var(mat2d, axis=0))
+  
+  return mu, variance
+
+
+
+'''
+  for item in training_data:
+    item
+
 
   testdata = []
 
@@ -322,3 +349,5 @@ def em(clusters, training_data):
 
 if __name__ == '__main__':
   guassmix(sys.argv)
+
+'''

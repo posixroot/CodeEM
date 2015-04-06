@@ -1,12 +1,82 @@
 #!/usr/bin/python
 
-""" Author: Kiran Maddipati OSUID: 200405214 """
+__author__ = "posixroot"
 
 import sys
 import os
 import random
 import math
 import numpy
+
+
+def initialize_prior(prior, clusters):
+  for i in range(clusters):
+    prior.append(1/float(clusters))
+
+
+def initialize_mu_method_1(clusters, testdata, mu):
+  for i in range(clusters):
+    mu.append(random.choice(testdata))
+
+
+def initialize_mu_method_2(clusters, minarr, rangearr, mu):
+  for i in range(clusters):
+    mu.append([a+(b*i/clusters) for a,b in zip(minarr,rangearr)])
+
+
+def initialize_sd(clusters, rangearr, sd):
+  for i in range(clusters):
+    frac = random.random()
+    sd.append([a*frac for a in rangearr])
+
+
+def log_prior_probability(clusters, prior, logprior):
+  for i in range(clusters):
+    logprior.append(math.log(prior[i]))
+
+
+def calculate_estep_loglikelihood(clusters, testrows, testfeatures, testdata, mu, sd):
+  ell = []
+  for i in range(clusters):
+    temp = []
+    for j in range(testrows):
+      temp.append([(-0.5)*((a-b)**2)/(c**2) for a,b,c in zip(testdata[j],mu[i],sd[i])])
+    ell.append(temp)
+
+  temp2 = []
+  for i in range(clusters):
+    temp = []
+    for j in range(testrows):
+      temp.append([a+(-0.5*math.log(2*math.pi*b)) for a,b in zip(ell[i][j],sd[i])])
+    temp2.append(temp)
+  ell = []
+  ell = temp2[:]
+
+  temp2 = []
+  for i in range(clusters):
+    temp = []
+    for j in range(testrows):
+      sumx = 0.0
+      for k in range(testfeatures):
+        sumx += ell[i][j][k]
+      temp.append(sumx)
+    temp2.append(temp)
+  ell = []
+  ell = temp2[:]
+  return ell
+
+
+def calculate_estep_loglikelihood_with_prior(clusters, ell, logprior, ellprior):
+  for i in range(clusters):
+    ellprior.append([logprior[i]+x for x in ell[i]])
+
+
+def calculate_max_lsx_by_rows(testrows, clusters, ellprior, lsxmax):
+  for i in range(testrows):
+    temp = []
+    for j in range(clusters):
+      temp.append(ellprior[j][i])
+    lsxmax.append(max(temp))
 
 
 def guassmix(argv):
@@ -18,7 +88,7 @@ def guassmix(argv):
     print "Usage: python guassmix.py <#clusters> <data-file> <model-file>"
     sys.exit()
 
-  os.chdir('/home/kiran/Desktop/AI/hw/hw1')
+  os.path.dirname(os.path.abspath(__file__))
   clusters = int(argv[1])
   data = argv[2]  #'wine.train'
   model = argv[3]  #'wineout'
@@ -36,95 +106,42 @@ def guassmix(argv):
   for line in f:
     testdata.append([float(x) for x in line.split()])
 
-  #################print testdata[12]
-
   #Initialize prior values for all the clusters
   prior = []
-  for i in range(clusters):
-    prior.append(1/float(clusters))
+  initialize_prior(prior, clusters)
 
-  ############print '\nprior check: '
-  ############print prior
-
-  #Find the min, max and range of each of the features
+  mu = []
   maxarr = []
   minarr = []
+  rangearr = []
+
+  #Find the min, max and range of each of the features
   for i in range(testfeatures):
     temp = []
     for j in range(testrows):
       temp.append(testdata[j][i])
     maxarr.append(max(temp))
     minarr.append(min(temp))
-
   rangearr = [abs(a-b) for a,b in zip(maxarr, minarr)]
 
   #Initialize mu for all clusters. Method 1 (random datapoints as means)
-  mu = []
-  for i in range(clusters):
-    mu.append(random.choice(testdata))
+  initialize_mu_method_1(clusters, testdata, mu)
 
-  #Method 2 to Initialize the mean(uniform dist. over range). To enable, uncomment the below lines.
-  #mu = []
-  #for i in range(clusters):
-    #mu.append([a+(b*i/clusters) for a,b in zip(minarr,rangearr)])
-
-  #mu.append(testdata[1])
-  #mu.append(testdata[60])
-  #mu.append(testdata[140])
-
+  #Method 2 to Initialize the mean(uniform dist. over range). To enable, uncomment the below line.
+  # initialize_mu_method_2(clusters, minarr, rangearr, mu)
 
   #Initialize Standard Deviation values for all the clusters
   sd = []
-  for i in range(clusters):
-    frac = random.random()
-    sd.append([a*frac for a in rangearr])
-
-  ########print "sd values:"
-  ########for i in range(clusters):
-    ########print 'sd[0] is ', sd[i]
-  ########print '\n'
+  initialize_sd(clusters, rangearr, sd)
 
   loopvar = 1
   #Iteration 1
   while(loopvar>0):
     logprior = []
-    for i in range(clusters):
-      #ell.append(testdata)
-      logprior.append(math.log(prior[i]))
+    log_prior_probability(clusters, prior, logprior)
 
-    ############print 'logprior: ', logprior
-
-    ell = []
-    for i in range(clusters):
-      temp = []
-      for j in range(testrows):
-        temp.append([(-1)*((a-b)**2)/(2*c*c) for a,b,c in zip(testdata[j],mu[i],sd[i])])
-      ell.append(temp)
-
-    temp2 = []
-    for i in range(clusters):
-      temp = []
-      for j in range(testrows):
-        temp.append([a+(-0.5*math.log(2*math.pi*b)) for a,b in zip(ell[i][j],sd[i])])
-      temp2.append(temp)
-    ell = []
-    ell = temp2[:]
-
-    temp2 = []
-    for i in range(clusters):
-      temp = []
-      for j in range(testrows):
-        sumx = 0.0
-        for k in range(testfeatures):
-          sumx += ell[i][j][k]
-        temp.append(sumx)
-      temp2.append(temp)
-    ell = []
-    ell = temp2[:]
-
-    #print '\n\nEll\n',loopvar
-    #for i in range(clusters):
-      #print ell[i][0]
+    #Calculate loglikelihood estimate (E-Step)
+    ell = calculate_estep_loglikelihood(clusters, testrows, testfeatures, testdata, mu, sd)
 
     #loop break condition
     if(loopvar>1):
@@ -144,25 +161,13 @@ def guassmix(argv):
         break
 
     ellprior = []
-    for i in range(clusters):
-      ellprior.append([logprior[i]+x for x in ell[i]])
-
-    ########print '\n\nElls are: '
-    ########for i in range(clusters):
-      ########print ell[i][12]
-
-    ########print '\n\nEllpriors are: '
-    ########for i in range(clusters):
-      ########print ellprior[i][12]
+    calculate_estep_loglikelihood_with_prior(clusters, ell, logprior, ellprior)
 
     lsxmax = []
-    for i in range(testrows):
-      temp = []
-      for j in range(clusters):
-        temp.append(ellprior[j][i])
-      lsxmax.append(max(temp))
+    calculate_max_lsx_by_rows(testrows, clusters, ellprior, lsxmax)
 
-    ########print 'lsxmax is: ', lsxmax[12]
+
+
 
 
     temp = []
@@ -177,25 +182,11 @@ def guassmix(argv):
     epost = ellprior[:]
 
 
-    #print '\n'
-    #for i in range(clusters):
-      #print 'epost[0][12] is: ', epost[i][12]
-
-
-
-    ############print '\nELLPRIOR CHECK (with lsxmax subtracted): '
-    ############for i in range(clusters):
-      ############print ellprior[i][12]
-
     temp = []
     for i in range(clusters):
       temp.append([math.exp(a) for a in ellprior[i]])
     ellprior = []
     ellprior = temp[:]
-
-    ############print '\nELLPRIOR CHECK (E power): '
-    ############for i in range(clusters):
-      ############print ellprior[i][12]
 
     sumarr = []
     for i in range(testrows):
