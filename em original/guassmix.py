@@ -78,6 +78,90 @@ def calculate_max_lsx_by_rows(testrows, clusters, ellprior, lsxmax):
       temp.append(ellprior[j][i])
     lsxmax.append(max(temp))
 
+def posterior_after_lsx_factorization(clusters, testrows, ellprior, lsxmax):
+  ellprior_with_lsx_max_constant = []
+  for i in range(clusters):
+    ellprior_with_lsx_max_constant.append([a-b for a,b in zip(ellprior[i],lsxmax)])
+  ellprior = ellprior_with_lsx_max_constant
+
+  #save the intermediate result in epost -> E-step Posterior Probability
+  epost = ellprior_with_lsx_max_constant[:]
+
+  lsx_exp_term = []
+  for i in range(clusters):
+    lsx_exp_term.append([math.exp(a) for a in ellprior_with_lsx_max_constant[i]])
+  ellprior = lsx_exp_term
+
+  lsx_exp_terms_sum = []#sumarr
+  for i in range(testrows):
+    row_sum = 0.0
+    for j in range(clusters):
+      row_sum += lsx_exp_term[j][i]
+    lsx_exp_terms_sum.append((-1)*math.log(row_sum))
+
+  epost_log_space = []
+  for i in range(clusters):
+    epost_log_space.append([a+b for a,b in zip(ellprior_with_lsx_max_constant[i], lsx_exp_terms_sum)])
+
+  return epost_log_space
+
+
+def convert_epost_to_decimal_space(clusters, epost_log_space):
+  epost_decimal_space = []
+  for i in range(clusters):
+    epost_decimal_space.append([math.exp(a) for a in epost_log_space[i]])
+
+  return epost_decimal_space
+
+
+def calculate_cluster_priors(clusters, testrows, epost):
+  cluster_priors = []
+  for i in range(clusters):
+    posterior_sum = 0.0
+    for j in range(testrows):
+      posterior_sum += epost[i][j]
+    #smoothening incorporated so that prior is never 0
+    if posterior_sum==0.0:
+      cluster_priors.append((posterior_sum+0.00000001)/testrows)
+    else:
+      cluster_priors.append(posterior_sum/testrows)
+  return cluster_priors
+
+
+def calculate_cluster_mus(clusters, testfeatures, testrows, testdata, cluster_priors, epost):
+  mu_numerator_all_clusters = []
+  for i in range(clusters):
+    mu_numerator_each_cluster = []
+    for j in range(testfeatures):
+      feature_sum = 0.0
+      for k in range(testrows):
+        feature_sum += (testdata[k][j]*epost[i][k])
+      mu_numerator_each_cluster.append(feature_sum)
+    mu_numerator_all_clusters.append(mu_numerator_each_cluster)
+
+  mu_all_clusters = []
+  for i in range(clusters):
+    mu_all_clusters.append([numerator/(cluster_priors[i]*testrows) for numerator in mu_numerator_all_clusters[i]])
+  return mu_all_clusters
+
+
+def calculate_cluster_sds(clusters, testfeatures, testrows, testdata, mu_all_clusters, cluster_priors, epost):
+  sd_numerator_all_clusters = []
+  for i in range(clusters):
+    sd_numerator_each_cluster = []
+    for j in range(testfeatures):
+      feature_sum = 0.0
+      for k in range(testrows):
+        feature_sum += (((testdata[k][j]-mu_all_clusters[i][j])**2)*epost[i][k])
+      sd_numerator_each_cluster.append(feature_sum)
+    sd_numerator_all_clusters.append(sd_numerator_each_cluster)
+
+  sd_all_clusters = []
+  for i in range(clusters):
+    #smoothening incorporated so that sd can never be 0
+    sd_all_clusters.append([math.sqrt((numerator+0.00000001)/(cluster_priors[i]*testrows)) if numerator==0.0 else math.sqrt(numerator/(cluster_priors[i]*testrows)) for numerator in sd_numerator_all_clusters[i]])
+  return sd_all_clusters
+
 
 def guassmix(argv):
   """This function computes the EM algorithm."""
@@ -166,128 +250,26 @@ def guassmix(argv):
     lsxmax = []
     calculate_max_lsx_by_rows(testrows, clusters, ellprior, lsxmax)
 
+    epost_log_space = posterior_after_lsx_factorization(clusters, testrows, ellprior, lsxmax)
 
-
-
-
-    temp = []
-    for i in range(clusters):
-      temp.append([a-b for a,b in zip(ellprior[i],lsxmax)])
-    ellprior = []
-    ellprior = temp[:]
-
-    epost = []
-    #for i in range(clusters):
-      #epost.append(ellprior[i])
-    epost = ellprior[:]
-
-
-    temp = []
-    for i in range(clusters):
-      temp.append([math.exp(a) for a in ellprior[i]])
-    ellprior = []
-    ellprior = temp[:]
-
-    sumarr = []
-    for i in range(testrows):
-      sumrow = 0.0
-      for j in range(clusters):
-        sumrow += ellprior[j][i]
-      sumarr.append((-1)*math.log(sumrow))
-
-    #print '\nThe sumarr test: '
-    #print sumarr[12]
-
-    temp = []
-    for i in range(clusters):
-      temp.append([a+b for a,b in zip(epost[i],sumarr)])
-    epost = []
-    epost = temp[:]
-
-    ############print '\n The posterior check: '
-    ############for i in range(clusters):
-      ############print epost[i][12]
-
-    temp = []
-    for i in range(clusters):
-      temp.append([math.exp(a) for a in epost[i]])
-    epost = []
-    epost = temp[:]
-
-    ############print '\n The posterior check (normal space): '
-    ############for i in range(clusters):
-      ############print epost[i][12]
-
+    epost = convert_epost_to_decimal_space(clusters, epost_log_space)
     ##End of E step
 
     #M Step
-    priorval = []
-    for i in range(clusters):
-      sumcol = 0.0
-      for j in range(testrows):
-        sumcol += epost[i][j]
-      #smoothening incorporated so that prior is never 0
-      priorval.append((sumcol+0.00001)/testrows)
+    cluster_priors = calculate_cluster_priors(clusters, testrows, epost)
 
-    ############print '\n PriorVal check: '
-    ############for i in range(clusters):
-      ############print priorval[i]
+    mu_all_clusters = calculate_cluster_mus(clusters, testfeatures, testrows, testdata, cluster_priors, epost)
 
-    muval = []
-    for i in range(clusters):
-      temp = []
-      for j in range(testfeatures):
-        sumval = 0.0
-        for k in range(testrows):
-          sumval += (testdata[k][j]*epost[i][k])
-        temp.append(sumval)
-      muval.append(temp)
-
-    ############print '\n Muval check (before division): '
-    ############for i in range(clusters):
-      ############print muval[i]
-
-    temp = []
-    for i in range(clusters):
-      temp.append([a/(priorval[i]*testrows) for a in muval[i]])
-    muval = temp[:]
-
-    ############print '\n Muval check (after div): '
-    ############for i in range(clusters):
-      ############print muval[i]
-
-    sdval = []
-    for i in range(clusters):
-      temp = []
-      for j in range(testfeatures):
-        sumval = 0.0
-        for k in range(testrows):
-          sumval += (((testdata[k][j]-muval[i][j])**2)*epost[i][k])
-        temp.append(sumval)
-      sdval.append(temp)
-
-    ############print '\n sdval check (before division): '
-    ############for i in range(clusters):
-      ############print sdval[i]
-
-    temp = []
-    for i in range(clusters):
-      #smoothening incorporated so that sd can never be 0
-      temp.append([math.sqrt((a+0.00001)/(priorval[i]*testrows)) for a in sdval[i]])
-    sdval = []
-    sdval = temp[:]
-
-    ############print '\n sdval check (after division): '
-    ############for i in range(clusters):
-      ############print sdval[i]
+    sd_all_clusters = calculate_cluster_sds(clusters, testfeatures, testrows, testdata, mu_all_clusters, cluster_priors, epost)
+    #End of M step
 
     oldell = ell[:]
-    prior = priorval[:]
-    mu = muval[:]
-    sd = sdval[:]
-
+    prior = cluster_priors[:]
+    mu = mu_all_clusters[:]
+    sd = sd_all_clusters[:]
     loopvar +=1
 
+  #out of while loop (when threshold is met)
   print "\nThreshold met. Loop Exited!\n\nFor Reference: "
   print "\nPrior val: ", prior
   print "\nMu val: ", mu
@@ -297,6 +279,7 @@ def guassmix(argv):
 
   print '\n\nNumber of loops: ', loopvar
 
+  #write output to out-file
   outf = open(model, 'w')
   outf.write(str(clusters)+' '+str(testfeatures)+'\n')
   for i in range(clusters):
@@ -306,7 +289,6 @@ def guassmix(argv):
     for j in range(testfeatures):
       outf.write(str(sd[i][j])+' ')
     outf.write('\n')
-
   outf.close()
 
 
