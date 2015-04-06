@@ -1,0 +1,31 @@
+README:
+
+1. To run the program: python guassmix.py <#clusters> <data-file> <model-file>
+
+2. The program outputs to the terminal certain Auxiliary data useful for debugging. Please ignore it.
+
+3. Answers for Questions 1 and 2 can be found in the pictures attached.
+
+4. Programming Assignment is named guassmix.py. Please find it attached.
+
+Notes: For the programming assignment I have used smoothening technique a couple of places to avoid divide by 0 errors. Comments are written wherever smoothening is used in the code.
+
+
+Answers to the Programming Assignment:
+
+Part a: Please find attached a PNG file named "IterationVsLogLikelihood" for the graph. As per the values plotted, Training set took 14 iterations to converge and the Test set took 7 iterations, although the average iterations for both the sets are different from the ones shown in the graph.
+Avg Iterations for Training Set: 42
+Avg Iterations for Test Set: 19
+
+Part b: The code for both the methods is implemented. One method active and the other is commented out.
+On running and testing the two methods of initializing mean, I found that selecting random datapoints as means converged faster. I beleive this is due to the face that
+i. Taking datapoints as means would perform better because the datapoint as a whole belongs to one cluster and it is likely that after the EM terminates, datapoints similar to it would be placed in the same cluster as the mean datapoint.
+ii. On the other hand, taking a uniform distribution over the features of the datapoints and assigning different ranges to different clusters is not logical since features are considered without taking into account which datapoint they actually belong to. In other words, features need to be considered as a whole and not individually.
+
+Part c: I have captured the change in the graph named "SeedVsLogLikelihood". Please find the PNG file attached.
+
+Part d: The Observed clustering is not the same as Original clustering but it matched ~50% of the data correctly and this value keeps varying for each run of the program. I beleive this is because of the random initializations of the priors, means and standard deviations.
+
+Part e: Please find the PNG file named "LoglikelihoodVsClusters" for the graph.
+By observation, the Training data varies in a zig-zag pattern and this pattern's deviation keeps increasing as we move away from clusters=3. Compared to Training data, the Test data shows a little lesser deviation but the same zig-zag pattern is observed.
+By observing the graph, I can state that the difference between the Loglikelihood values for Training and Test data is the least when the cluster value is 3. And this difference slowly starts to increase as we go away from Clusters = 3. This is due to the fact that there are only 3 classes of wines originally.
