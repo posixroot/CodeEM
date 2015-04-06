@@ -1,0 +1,24 @@
+{
+  "training-data": [
+  {
+    "label": "1",
+    "attrs": ["attr1_1", "attr2_1", "attr3_1"]
+  },
+  {
+    "label": "2",
+    "attrs": ["attr1_2", "attr2_2", "attr3_2"]
+  },
+  {
+    "label": "3",
+    "attrs": ["attr1_3", "attr2_3", "attr3_3"]
+  },
+  {
+    "label": "2",
+    "attrs": ["attr4_2", "attr5_2", "attr6_2"]
+  },
+  {
+    "label": "2",
+    "attrs": ["attr7_2", "attr8_2", "attr9_2"]
+  }
+  ]
+}
