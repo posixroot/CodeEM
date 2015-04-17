@@ -66,6 +66,24 @@ def calculate_estep_loglikelihood(clusters, testrows, testfeatures, testdata, mu
   return ell
 
 
+def infer_label(line, clusters, testfeatures, mu, sd):
+  data_vector = [float(x) for x in line.split()]
+  data_vector_list = []
+  data_vector_list.append(data_vector)
+
+  ell = calculate_estep_loglikelihood(clusters, 1, testfeatures, data_vector_list, mu, sd)
+
+  label = 1
+  max_probability = ell[0][0]
+  for i in range(clusters):
+    if(max_probability<ell[i][0]):
+      max_probability = ell[i][0]
+      label = i+1
+
+  return label
+
+
+
 def calculate_estep_loglikelihood_with_prior(clusters, ell, logprior, ellprior):
   for i in range(clusters):
     ellprior.append([logprior[i]+x for x in ell[i]])
@@ -279,18 +297,29 @@ def guassmix(argv):
 
   print '\n\nNumber of loops: ', loopvar
 
-  #write output to out-file
   outf = open(model, 'w')
-  outf.write(str(clusters)+' '+str(testfeatures)+'\n')
-  for i in range(clusters):
-    outf.write(str(prior[i])+' ')
-    for j in range(testfeatures):
-      outf.write(str(mu[i][j])+' ')
-    for j in range(testfeatures):
-      outf.write(str(sd[i][j])+' ')
-    outf.write('\n')
-  outf.close()
+  # outf.write(str(clusters)+' '+str(testfeatures)+'\n')
 
+  #Model Trained Successfully
+  test_file_name = "wine.test"
+
+  with open(test_file_name, 'r') as test_file:
+    test_file.readline()
+    for line in test_file:
+      label = infer_label(line, clusters, testfeatures, mu, sd)
+      outf.write(str(label)+' '+line)
+
+
+  #write output to out-file
+
+  # for i in range(clusters):
+  #   outf.write(str(prior[i])+' ')
+  #   for j in range(testfeatures):
+  #     outf.write(str(mu[i][j])+' ')
+  #   for j in range(testfeatures):
+  #     outf.write(str(sd[i][j])+' ')
+  #   outf.write('\n')
+  outf.close()
 
 
 if __name__ == '__main__':
