@@ -301,7 +301,7 @@ def guassmix(argv):
   # outf.write(str(clusters)+' '+str(testfeatures)+'\n')
 
   #Model Trained Successfully
-  test_file_name = "wine.test"
+  test_file_name = "wine.train"
 
   with open(test_file_name, 'r') as test_file:
     test_file.readline()
